@@ -24,7 +24,7 @@ export default function TelaListagem() {
   const [lembreteSelecionado, setLembreteSelecionado] = useState<Lembrete | null>(null);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Todos');
 
-  const categorias = ['Todos', 'Trabalho', 'Saúde', 'Estudos', 'Pessoal'];
+  const categorias = [ 'Todos','Trabalho','Saúde','Viagem','Estudos','Outro',];
 
   const carregarDados = useCallback(async () => {
     try {
