@@ -16,6 +16,8 @@ import { servicoLembretes } from '../../service/api';
 import { Lembrete, LembreteInput } from '../../type/lembrete';
 import { ModalLembrete } from '../../components/ModalLembrete';
 
+const API_URL = 'http://10.59.47';
+
 export default function TelaListagem() {
   const router = useRouter();
   const [lembretes, setLembretes] = useState<Lembrete[]>([]);

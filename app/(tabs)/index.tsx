@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pencil, Trash2, Plus, Calendar, CheckSquare } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { servicoLembretes } from '../../service/api';
 import { Lembrete, LembreteInput } from '../../type/lembrete';
 import { ModalLembrete } from '../../components/ModalLembrete';
@@ -37,10 +37,11 @@ export default function TelaPrincipal() {
     }
   }, []);
 
-  useEffect(() => {
+ useFocusEffect(
+  useCallback(() => {
     carregarDados();
-  }, [carregarDados]);
-
+  }, [carregarDados])
+);
   const handleSalvarLembrete = async (dados: LembreteInput, id?: string) => {
     try {
       if (id) {

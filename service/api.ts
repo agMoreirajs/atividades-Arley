@@ -1,106 +1,116 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Lembrete, LembreteInput } from '../type/lembrete';
 
-const CHAVE_STORAGE = '@lembrete_uc:lembretes';
+// IP do seu computador na rede do Senac + pasta no htdocs
+const API_URL = 'http://10.0.2.2/api_lembretes';
+
+// Função auxiliar para converter data BR (ex: "11/11/2026" ou "11/11/2026 às 15:30") para o formato MySQL (YYYY-MM-DD HH:MM:SS)
+function formatarDataParaMySQL(textoHorario?: string): string {
+  const agora = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  
+  let dataParte = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())}`;
+  let horaParte = `${pad(agora.getHours())}:${pad(agora.getMinutes())}:00`;
+
+  if (textoHorario) {
+    const matchData = textoHorario.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (matchData) {
+      dataParte = `${matchData[3]}-${matchData[2]}-${matchData[1]}`;
+    }
+
+    const matchHora = textoHorario.match(/(\d{1,2}):(\d{2})/);
+    if (matchHora) {
+      horaParte = `${pad(Number(matchHora[1]))}:${matchHora[2]}:00`;
+    }
+  }
+
+  return `${dataParte} ${horaParte}`;
+}
+
 
 export const servicoLembretes = {
-  // Listar todos os lembretes guardados
+  // 1. Listar todos os lembretes direto do MySQL
   async listar(): Promise<Lembrete[]> {
     try {
-      const dados = await AsyncStorage.getItem(CHAVE_STORAGE);
-      if (!dados) {
-        const iniciais: Lembrete[] = [
-          {
-            id: '1',
-            titulo: 'Reunião de Alinhamento',
-            descricao: 'Revisar entregas do projeto no Seconci',
-            categoria: 'Trabalho',
-            horario: '04/11/2026 às 7:57 PM',
-          },
-          {
-            id: '2',
-            titulo: 'Tomar Creatina',
-            descricao: 'Consumir 5g com água antes de sair',
-            categoria: 'Saúde',
-            horario: '04/11/2026 às 7:57 PM',
-          },
-          {
-            id: '3',
-            titulo: 'Aula de React Native',
-            descricao: 'Estudar navegadores do Expo Router',
-            categoria: 'Estudos',
-            horario: '04/11/2026 às 7:57 PM',
-          },
-        ] as any;
-        await AsyncStorage.setItem(CHAVE_STORAGE, JSON.stringify(iniciais));
-        return iniciais;
-      }
-      return JSON.parse(dados);
+      const response = await fetch(`${API_URL}/listar.php`);
+      const dados = await response.json();
+      return dados;
     } catch (error) {
-      console.error('Erro ao listar lembretes:', error);
+      console.error('Erro ao listar lembretes do banco:', error);
       return [];
     }
   },
 
-  // Criar um novo lembrete
+  // 2. Criar um novo lembrete no MySQL
   async criar(input: LembreteInput): Promise<Lembrete> {
     try {
-      const lembretes = await this.listar();
-      const novoLembrete: Lembrete = {
-        id: Date.now().toString(),
+      const dataFormatada = formatarDataParaMySQL(input.horario);
+
+      const response = await fetch(`${API_URL}/cadastrar.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          titulo: input.titulo,
+          descricao: input.descricao || '',
+          categoria: input.categoria || 'Trabalho',
+          data_lembrete: dataFormatada,
+        }),
+      });
+
+      const resultado = await response.json();
+
+      if (!resultado.sucesso) {
+        throw new Error(resultado.erro || 'Erro ao salvar no banco.');
+      }
+
+      return {
+        id: resultado.id,
         titulo: input.titulo,
         descricao: input.descricao || '',
         categoria: input.categoria || 'Trabalho',
-        horario: input.horario || '7:57 PM',
+        horario: input.horario || dataFormatada,
       } as any;
-
-      const lembretesAtualizados = [novoLembrete, ...lembretes];
-      await AsyncStorage.setItem(CHAVE_STORAGE, JSON.stringify(lembretesAtualizados));
-      return novoLembrete;
     } catch (error) {
-      console.error('Erro ao criar lembrete:', error);
+      console.error('Erro ao criar lembrete no banco:', error);
       throw error;
     }
   },
 
-  // Atualizar um lembrete existente
+  // 3. Atualizar um lembrete existente (mantido estruturado para o TypeScript não reclamar)
   async atualizar(id: string, input: LembreteInput): Promise<Lembrete> {
     try {
-      const lembretes = await this.listar();
-      let lembreteAtualizado: Lembrete | null = null;
-
-      const lembretesAtualizados = lembretes.map((item) => {
-        if (item.id === id) {
-          lembreteAtualizado = {
-            id,
-            titulo: input.titulo,
-            descricao: input.descricao || item.descricao,
-            categoria: input.categoria || item.categoria,
-            horario: input.horario || item.horario,
-          } as any;
-          return lembreteAtualizado;
-        }
-        return item;
+      const response = await fetch(`${API_URL}/atualizar.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          titulo: input.titulo,
+          descricao: input.descricao || '',
+          categoria: input.categoria || 'Trabalho',
+          data_lembrete: formatarDataParaMySQL(input.horario),
+        }),
       });
-
-      if (!lembreteAtualizado) {
-        throw new Error('Lembrete não encontrado para atualização.');
-      }
-
-      await AsyncStorage.setItem(CHAVE_STORAGE, JSON.stringify(lembretesAtualizados));
-      return lembreteAtualizado;
+      const resultado = await response.json();
+      if (!resultado.sucesso) throw new Error(resultado.erro);
+      
+      return { id, ...input } as any;
     } catch (error) {
       console.error('Erro ao atualizar lembrete:', error);
       throw error;
     }
   },
 
-  // Excluir um lembrete
+  // 4. Excluir um lembrete
   async excluir(id: string): Promise<void> {
     try {
-      const lembretes = await this.listar();
-      const lembretesAtualizados = lembretes.filter((item) => item.id !== id);
-      await AsyncStorage.setItem(CHAVE_STORAGE, JSON.stringify(lembretesAtualizados));
+      const response = await fetch(`${API_URL}/excluir.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const resultado = await response.json();
+      if (!resultado.sucesso) throw new Error(resultado.erro);
     } catch (error) {
       console.error('Erro ao excluir lembrete:', error);
       throw error;

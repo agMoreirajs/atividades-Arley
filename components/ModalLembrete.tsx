@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { X, Calendar as CalendarIcon, Clock, Tag } from 'lucide-react-native';
+import { X, Calendar as CalendarIcon, Clock } from 'lucide-react-native';
 import { Lembrete, LembreteInput } from '../type/lembrete';
 
 interface ModalLembreteProps {
@@ -19,6 +19,8 @@ interface ModalLembreteProps {
   onFechar: () => void;
   onSalvar: (dados: LembreteInput, id?: string) => void;
 }
+
+const CATEGORIAS_MODAL = ['Trabalho', 'Saúde', 'Viagem', 'Estudos', 'Outro'];
 
 export function ModalLembrete({
   visivel,
@@ -37,8 +39,27 @@ export function ModalLembrete({
       setTitulo(lembreteParaEditar.titulo || '');
       setDescricao(lembreteParaEditar.descricao || '');
       setCategoria(lembreteParaEditar.categoria || 'Trabalho');
-      setData((lembreteParaEditar as any).data || '');
-      setHorario(lembreteParaEditar.horario || '');
+
+      const textoCompleto = lembreteParaEditar.horario || '';
+
+      // 1. Extrai a data no formato DD/MM/AAAA
+      const matchData = textoCompleto.match(/(\d{2}\/\d{2}\/\d{4})/);
+      setData(matchData ? matchData[1] : (lembreteParaEditar as any).data || '');
+
+      // 2. Extrai a hora e converte AM/PM para 24h (HH:MM)
+      const matchHora = textoCompleto.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (matchHora) {
+        let horas = parseInt(matchHora[1], 10);
+        const minutos = matchHora[2];
+        const periodo = matchHora[3]?.toUpperCase();
+
+        if (periodo === 'PM' && horas < 12) horas += 12;
+        if (periodo === 'AM' && horas === 12) horas = 0;
+
+        setHorario(`${String(horas).padStart(2, '0')}:${minutos}`);
+      } else {
+        setHorario('');
+      }
     } else {
       setTitulo('');
       setDescricao('');
@@ -53,12 +74,15 @@ export function ModalLembrete({
       return;
     }
 
+    const dataHoraCompleta =
+      data && horario ? `${data} às ${horario}` : data || horario || '';
+
     onSalvar(
       {
         titulo,
         descricao,
         categoria,
-        horario: horario || data || '7:57 PM',
+        horario: dataHoraCompleta,
       } as any,
       lembreteParaEditar?.id
     );
@@ -139,7 +163,7 @@ export function ModalLembrete({
             <View style={estilos.grupoCampo}>
               <Text style={estilos.label}>Categoria</Text>
               <View style={estilos.categoriasContainer}>
-                {['Trabalho', 'Saúde', 'Estudos', 'Pessoal'].map((cat) => (
+                {CATEGORIAS_MODAL.map((cat) => (
                   <TouchableOpacity
                     key={cat}
                     style={[

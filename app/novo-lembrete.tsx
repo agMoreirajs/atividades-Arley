@@ -6,13 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Calendar, Clock } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { servicoLembretes } from '../service/api';
+
+const CATEGORIAS_CADASTRO = ['Trabalho', 'Saúde', 'Viagem', 'Estudos', 'Outro'];
 
 export default function NovoLembrete() {
   const router = useRouter();
@@ -29,11 +31,14 @@ export default function NovoLembrete() {
     }
 
     try {
+      const dataHoraCompleta =
+        data && horario ? `${data} às ${horario}` : data || horario || '';
+
       await servicoLembretes.criar({
         titulo,
         descricao,
         categoria,
-        horario: horario || data || '7:57 PM',
+        horario: dataHoraCompleta,
       } as any);
 
       router.back();
@@ -106,7 +111,7 @@ export default function NovoLembrete() {
           <View style={estilos.grupoCampo}>
             <Text style={estilos.label}>Categoria</Text>
             <View style={estilos.categoriasContainer}>
-              {['Trabalho', 'Saúde', 'Estudos', 'Pessoal'].map((cat) => (
+              {CATEGORIAS_CADASTRO.map((cat) => (
                 <TouchableOpacity
                   key={cat}
                   style={[
