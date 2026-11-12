@@ -29,19 +29,40 @@ export default function TelaPrincipal() {
     try {
       setCarregando(true);
       const dados = await servicoLembretes.listar();
-      setLembretes(dados);
+      
+      // Pega a data de hoje formatada no mesmo padrão que vem do banco (DD/MM/YYYY)
+      const hoje = new Date();
+      const dia = String(hoje.getDate()).padStart(2, '0');
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      const ano = hoje.getFullYear();
+      const dataHojeStr = `${dia}/${mes}/${ano}`;
+
+      // Filtra para manter apenas os lembretes cujo horário contenha a data de hoje
+      const dadosHoje = dados.filter((item: any) => {
+        const horarioTexto = item.horario || item.data || '';
+        return horarioTexto.includes(dataHojeStr);
+      });
+
+      setLembretes(dadosHoje);
     } catch {
-      Alert.alert('Erro', 'Não foi possível carregar os compromissos.');
+      Alert.alert('Erro', 'Não foi possível carregar os compromissos de hoje.');
     } finally {
       setCarregando(false);
     }
   }, []);
 
- useFocusEffect(
-  useCallback(() => {
+  // Carrega automaticamente assim que o aplicativo abre na tela inicial
+  useEffect(() => {
     carregarDados();
-  }, [carregarDados])
-);
+  }, [carregarDados]);
+
+  // Recarrega sempre que você voltar para esta aba
+  useFocusEffect(
+    useCallback(() => {
+      carregarDados();
+    }, [carregarDados])
+  );
+
   const handleSalvarLembrete = async (dados: LembreteInput, id?: string) => {
     try {
       if (id) {

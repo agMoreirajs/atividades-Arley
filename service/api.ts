@@ -117,3 +117,9 @@ export const servicoLembretes = {
     }
   },
 };
+
+// Exemplo no seu service/api.ts
+listarHoje: async () => {
+const resposta = await fetch('http://10.59.47.30/api_lembretes/listar_hoje.php');
+  return await resposta.json();
+}
